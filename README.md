@@ -18,7 +18,7 @@ Public data, such as gnomAD, makes VCFs of short nucleotide variants (SNVs) avai
 
 *Goal:*
 ---
-Use VCFs of SNVs to call structural variants. In doing so, can e identify SVs that have otherwise escaped detection.
+Use VCFs of SNVs to call structural variants. In doing so, can we identify SVs that have otherwise escaped detection.
 
 ---
 ![flowchart](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/prelim_flowchart.png)
