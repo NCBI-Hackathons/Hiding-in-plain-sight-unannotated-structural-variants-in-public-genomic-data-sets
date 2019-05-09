@@ -188,6 +188,7 @@ class ApplyFilters:
         meis['uniqueID'] = meis.sseqid.str.cat(meis.sstrand, sep="_").str.cat(lis, sep="_")
         meis_bed = meis[['qseqid', "start", "original_pos", "uniqueID", 'bitscore', 'SV_type']].copy()
         meis_bed.columns = ['chr', 'start', 'end', 'uniqueID', 'score', 'SV_type']
+        meis_bed['chr'] = chr
         # print(meis_bed)
         meis_bed.to_csv(path_or_buf=(chr + '_MEIs.bed'), sep='\t', index=False)
 
