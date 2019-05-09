@@ -9,11 +9,11 @@ def get_args():
 	parser.add_argument('-i','--input', 
 		help='the input bed files for overlap', 
 		required = False, type = str,
-		default = '../test/chr1_MEIs.bed')
+		default = '../tests/chr1_MEIs.bed')
 	parser.add_argument('-r','--ref', 
 		help='the bed file for overlap reference', 
 		required = False, type = str,
-		default = '../out/chr1_MEIs_merged.bed')
+		default = '../tests/chr1_MEIs_merged.bed')
 	parser.add_argument('-p','--prop',
 		help='the proportion for overlap',
 		required = False,default=0.9)
@@ -63,10 +63,9 @@ def overlap_bed(args):
 	if args.overlapstyle=='r':
 		intersectdat = dat.intersect(ref, c=True,f=args.prop,r=True)
 	elif args.overlapstyle=='n':
-		intersectdat = dat.intersect(ref, c=True,f=args.prop)
+		intersectdat = dat.intersect(ref, c=True)
 
 	datf = intersectdat.to_dataframe(header=None)
-	print(datf.iloc[0:5,:])
 	overlap = get_overlap(datf,prop_thresh=args.prop)
 	datf['overlap'] = overlap
 	#datf.columns=headerdat+headerref+['length','overlap']
