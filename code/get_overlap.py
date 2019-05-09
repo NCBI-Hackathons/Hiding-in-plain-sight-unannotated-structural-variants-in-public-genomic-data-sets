@@ -19,15 +19,28 @@ def get_args():
 		required = False,default=0.9)
 	parser.add_argument('-o','--output',
 		help='the ouput bed files for overlap')
+	parser.add_argument('-s','--overlapstyle', 
+		help='the overlapstyle', 
+		required = False, choices = ['r','n'], default='r')
 	
 	args = parser.parse_args()
 	return(args)
-
+'''
 def get_overlap(dat,prop_thresh):
 	overlaplist = []
 	for index, row in dat.iterrows():
 		prop = (float(row[2])-float(row[1]))/float(row[len(row)-1])
 		if prop>=prop_thresh:
+			overlaplist.append(1)
+		else:
+			overlaplist.append(0)
+	return(overlaplist)
+'''
+
+def get_overlap(dat,prop_thresh):
+	overlaplist = []
+	for index, row in dat.iterrows():
+		if int(row[len(row)-1])>0:
 			overlaplist.append(1)
 		else:
 			overlaplist.append(0)
@@ -44,15 +57,20 @@ def overlap_bed(args):
 	dat = BedTool(args.input)
 	headerdat = get_header(args.input)
 	ref = BedTool(args.ref)
-	headerref = get_header(args.ref)
-	headerref = [s + '_ref' for s in headerref]
+	#headerref = get_header(args.ref)
+	#headerref = [s + '_ref' for s in headerref]
 
-	intersectdat = dat.intersect(ref, wo=True)
+	if args.overlapstyle=='r':
+		intersectdat = dat.intersect(ref, c=True,f=args.prop,r=True)
+	elif args.overlapstyle=='n':
+		intersectdat = dat.intersect(ref, c=True,f=args.prop)
+
 	datf = intersectdat.to_dataframe(header=None)
-	print(datf.columns)
+	print(datf.iloc[0:5,:])
 	overlap = get_overlap(datf,prop_thresh=args.prop)
 	datf['overlap'] = overlap
-	datf.columns=headerdat+headerref+['length','overlap']
+	#datf.columns=headerdat+headerref+['length','overlap']
+	datf.columns=headerdat+['count','overlap']
 	datf.to_csv(args.output,header=True,index=False,sep='\t')
 
 	return
