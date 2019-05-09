@@ -28,28 +28,30 @@ def changebase(line,startbase=10,endbase=10):
 	line.end = line.end+endbase
 	return(line)
 
-def bedtoframe(beddat):
+def bedtoframe(beddat,chrom):
 	ret = beddat.to_dataframe()
-	print(ret.columns)
 	ret = ret.drop(columns=['start','end'])
 	ret.columns=['#chr','start','end','merged_IDs','mean_bitscore','SV_type']
 	ret['SV_type'] = 'MET'
 	ret['uniqueID'] = [item.split('|')[0] for item in list(ret['merged_IDs'])]
 	ret['start'] = ret['start'].astype(int)
 	ret['end'] = ret['end'].astype(int)
+	ret['#chr'] = str(chrom)
 
 	seq_columns = ['#chr','start','end','uniqueID','SV_type','mean_bitscore','merged_IDs']
+	
 	ret = ret.reindex(columns = seq_columns)
 	return(ret)
 
 
 def merge_MEI(args):
 	dat = BedTool(args.input)
+	chrom = dat[0][0]
 	dat = dat.each(changechr)
 	dat = dat.sort()
 	changebase_dat = dat.each(changebase)
 	ret = changebase_dat.merge(c=(2,3,4,5,6), o=('mean','mean','collapse','mean','collapse'), delim='|')
-	ret = bedtoframe(ret)
+	ret = bedtoframe(ret,chrom)
 	ret.to_csv(args.output,header=True,index=False,sep='\t')
 	return()
 
