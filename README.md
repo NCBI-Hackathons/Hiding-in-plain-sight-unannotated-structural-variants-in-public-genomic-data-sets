@@ -20,6 +20,14 @@ Public data, such as gnomAD, makes VCFs of short nucleotide variants (SNVs) avai
 ---
 Use VCFs of SNVs to call structural variants. In doing so, can we identify SVs that have otherwise escaped detection.
 
+*Description:*
+---
+Large, aggregate, genomics data sets of short nucleotide variants (SNVs) such as [gnomAD/ExAC](https://gnomad.broadinstitute.org/) are an invaluable resource to the research and clinical genetics communities. Such data sets are often used as a control to determine the frequencies of variants in unaffected populations and gnomAD has [recently](https://www.biorxiv.org/content/10.1101/578674v1) released a structural variant call set on a subset of their samples. There is evidence, however, that additional SVs exist in the data, but haven't yet been annotated. For example, [this insertion](https://gnomad.broadinstitute.org/variant/21-18612332-A-ACCCAGGCAAACAGCGTCTGGAGTGGACCTCCAGGAAACAGGGTCTGGAGTGGACCTCCAGCAGACCTGCAGCAGAGGCACCTGTT) is actually indicative of a [known deletion](http://dgv.tcag.ca/dgv/app/variant?id=esv3646472&ref=hg19). Such anecdotal findings of deletions, processed pseudogenes, inversions, tandem duplications, and mobile element insertions exist in publicly available data, hiding there in plain sight.
+
+Without individual alignment files, the broader genomics community cannot evaluate structural variants in the complete data set. We, therefore, developed **HIPS**, a structural variant caller that uses VCF of SNVs as input and then outputs structural variant calls in bed format
+
+
+
 ---
 ![flowchart](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/prelim_flowchart.png)
 
