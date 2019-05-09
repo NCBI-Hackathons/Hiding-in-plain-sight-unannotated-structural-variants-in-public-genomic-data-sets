@@ -18,12 +18,13 @@ ui <- fluidPage (
                   choices=unique(sv$chr)),
       textInput(inputId="poslowhigh", label="Minimum/maximum position (e.g., 10000-20000)", value = "", width = NULL,
                 placeholder = NULL),
-      sliderInput("scoreMinMax", "Score", 30, 300, c(60, 100)),
+      sliderInput("scoreMinMax", "Score", min(sv$mean_bitscore, na.rm=T), max(sv$mean_bitscore, na.rm=T), c(50, max(sv$mean_bitscore, na.rm=T))),
       checkboxGroupInput("typeInput", "SV type",
                          choices=unique(sv$SV_type),
                          selected=sv$SV_type[1]),
-      checkboxInput("gnomad", "Gnomad SV", value=TRUE),
-      checkboxInput("thousandgenome", "ThousandGenomes SV", value=TRUE),
+      checkboxGroupInput("sv_seen", "Annotation",
+                         choices=names(sv)[8:ncol(sv)],
+                         selected=names(sv)[8:ncol(sv)]),
       radioButtons("display", "", choiceNames=c("Table", "Figure", "Download"), choiceValues=c("Table", "Figure", "Download"), selected="Figure", inline=TRUE)
       
     ),
@@ -49,16 +50,23 @@ server <- function(input, output) {
       if (input$chr != "") {
         outputvars <- outputvars[outputvars$chr==input$chr,]
       }
-      if (str_extract(mypos, "\\S*:{0,1}\\d+\\-\\d+") !="") {
-        #start <- sub('(\\S+:){0,1}([0-9]+)\\-([0-9]+)', '\\1', input$poslowhigh)
-        #end <- sub('(\\S+:){0,1}([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh)
-        #outputvars <- outputvars[(!(outputvars$end < start)) & (!(outputvars$start > end)),]
+      if (!is.na(str_extract(input$poslowhigh, "(\\S*:){0,1}\\d+\\-\\d+"))) {
+        #outputvars <- outputvars[c(),]
+        start <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\1', input$poslowhigh)
+        end <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh)
+        outputvars <- outputvars[(!(outputvars$end < start) & !(outputvars$start > end)),]
       }
-      if (!input$gnomad) {
-        outputvars <- outputvars[outputvars$gnomad_SV_counts != 1,]
+      gnomad = "gnomad_SV_counts" %in% input$sv_seen
+      if (!gnomad) {
+        outputvars <- outputvars[outputvars$gnomad_SV_counts == 0,]
       }
-      if (!input$thousandgenome) {
-        outputvars <- outputvars[outputvars$X1kg_SV_counts != 1,]
+      kg = "X1kg_SV_counts" %in% input$sv_seen
+      if (!kg) {
+        outputvars <- outputvars[outputvars$X1kg_SV_counts == 0,]
+      }
+      simpleseq = "simple_sequence_flag" %in% input$sv_seen
+      if (!simpleseq) {
+        outputvars <- outputvars[outputvars$simple_sequence_flag == 0,]
       }
       outputvars <- outputvars[outputvars$SV_type %in% input$typeInput, ]
       
