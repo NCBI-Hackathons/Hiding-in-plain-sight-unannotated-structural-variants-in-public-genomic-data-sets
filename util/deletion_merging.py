@@ -11,11 +11,15 @@ class SV:
         self.id_num = id_num
         self.score = float(score)
         self.sv_type = sv_type
-        self.inter_sv = []
+        self.inter_sv = [self]
 
-    def equal(self, new_sv):
+    def __eq__(self, new_sv):
         ''' check if two SVs are the same based on start and stop coordinates '''
         return(self.start == new_sv.start and self.stop == new_sv.stop)
+
+    def __str__(self):
+        ''' print SV object for testing purposes '''
+        return(f'{self.chr}\t{self.start}\t{self.stop}\t{self.id_num.split("|")[0]}\t{self.sv_type}\t{self.score}\t{self.id_num}\n')
 
     def add_sv(self, new_sv):
         ''' add an overlapping SV '''
@@ -40,15 +44,9 @@ class SV:
         self.stop  = round(mean(stop_coords))
         self.score = round(mean(align_scores),1)
         ## combine sv IDs
-        self.id_num = ','.join(ids)
+        self.id_num = '|'.join(ids)
 
-    def print(self):
-        ''' print SV object for testing purposes '''
-        print(f'{self.chr}\t{self.start}\t{self.stop}\t{self.id_num}\t{self.score}\t{self.sv_type}')
 
-    def to_string(self):
-        ''' print SV object for testing purposes '''
-        return(f'{self.chr}\t{self.start}\t{self.stop}\t{self.id_num}\t{self.score}\t{self.sv_type}\n')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('bedfile', help='path to the bedfile to merge')
@@ -65,8 +63,9 @@ ab_intersect = a.intersect(a, wao=True, f=args.overlap, r=True)
 
 ## List to store the merged SV objects
 merged_svs = []
+seen_svs = []
 
-## prev_sv holds A file SV object that B file SVs are currently being added to
+## prev_sv holds A-file SV object that B file SVs are currently being added to
 prev_sv = None
 
 for item in ab_intersect:
@@ -76,24 +75,51 @@ for item in ab_intersect:
     curr_sv = SV(chr1, start1, end1, id1, score1, sv_type1)
     next_sv = SV(chr2, start2, end2, id2, score2, sv_type2)
 
-    ## First SV in the file
-    if prev_sv == None:
-        curr_sv.add_sv(next_sv)
-        prev_sv = curr_sv
-    ## A file SV has not changed
-    elif curr_sv.equal(prev_sv):
-        prev_sv.add_sv(next_sv)
-    ## A file SV has changed
-    else:
-        ## merge and save the previous A file SV
-        prev_sv.merge()
-        merged_svs.append(prev_sv)
-        ## Change prev_sv to new A file SV
-        curr_sv.add_sv(next_sv)
+
+    '''
+    This section creates SV instances 
+    The prev_sv variable above will store the SV object being generated
+    As I cycle through the bed file, all SV events overlapping (90%) the 'prev_sv' are added to the inter_sv attribute
+    Once the A-file SV changes, the SV I have been working on is merged. Additionally, the SVs from the B-file that were included are added seen_svs so that it does not become an A-file SV. The SV is also only added to the merged_svs list so that it will be output to the end bed file
+    The prev_sv will be updated.
+    '''
+    try:
+        ## A-file SV has not changed
+        if curr_sv == prev_sv:
+            if curr_sv == next_sv:
+                pass
+            else:
+                prev_sv.add_sv(next_sv)
+
+        ## A-file SV has changed
+        else:
+            ## merge and save the previous A-file SV
+            prev_sv.merge()
+            ## only add the merged SV is if has not been previously merged with another SV
+            if curr_sv in seen_svs:
+                pass
+            else:
+                merged_svs.append(prev_sv)
+                seen_svs.extend(prev_sv.inter_sv)
+            
+            if curr_sv == next_sv:
+                pass
+            else:
+            ## change prev_sv to new A-file SV
+                curr_sv.add_sv(next_sv)
+            prev_sv = curr_sv
+
+    except AttributeError:
+        ## First SV in the file
+        if curr_sv == next_sv:
+            pass
+        else:
+            curr_sv.add_sv(next_sv)
         prev_sv = curr_sv
 
 ## Write merged SVs to the output file
 with open(args.outfile, 'w') as f:
-    for items in merged_svs:
-        f.write(items.to_string())
+    f.write(f'#chr\tstart\tend\tuniqueID\tSV_type\tmean_bitscore\tmerged_IDs\n')
+    for item in merged_svs:
+        f.write(str(item))
 
