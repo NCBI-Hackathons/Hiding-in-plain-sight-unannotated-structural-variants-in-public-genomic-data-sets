@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "library(\"shiny\")\nlibrary(\"shinyWidgets\")\nlibrary(\"stringr\")\n\nsetwd(\"/Users/nhansen/WomenHackathon/shinySVapp\")\n\nsv <- read.table(\"chr21_deletions_annotated.bed\", sep=\"\\t\", header=TRUE)\nsv$mean_bitscore <- as.integer(sv$mean_bitscore)\nsv$start <- as.integer(sv$start)\nsv$end <- as.integer(sv$end)\n\nui <- fluidPage (\n  titlePanel(\"Hiding in Plain Sight\"),\n  sidebarLayout(\n    sidebarPanel(\n      selectInput(inputId=\"chr\", \n                  label=\"Chromosome\",\n                  choices=unique(sv$chr)),\n      textInput(inputId=\"poslowhigh\", label=\"Minimum/maximum position (e.g., 10000-20000)\", value = \"\", width = NULL,\n                placeholder = NULL),\n      sliderInput(\"scoreMinMax\", \"Score\", 30, 300, c(60, 100)),\n      checkboxGroupInput(\"typeInput\", \"SV type\",\n                         choices=unique(sv$SV_type),\n                         selected=sv$SV_type[1]),\n      checkboxInput(\"gnomad\", \"Gnomad SV\", value=TRUE),\n      checkboxInput(\"thousandgenome\", \"ThousandGenomes SV\", value=TRUE)\n      \n    ),\n    mainPanel( \n      dataTableOutput(\"datatable\") \n    )\n  )\n)\n\n\nserver <- function(input, output) {\n  \n  filteredsvs <- reactive( {\n    outputvars <- sv\n    if (is.integer(input$scoreMinMax[1])) {\n      outputvars <- outputvars[outputvars$mean_bitscore >= input$scoreMinMax[1], ]\n    }\n    if (is.integer(input$scoreMinMax[2])) {\n      outputvars <- outputvars[outputvars$mean_bitscore <= input$scoreMinMax[2], ]\n    }\n    if (input$chr != \"\") {\n      outputvars <- outputvars[outputvars$chr==input$chr,]\n    }\n    #if (str_extract(mypos, \"\\\\S+:{0,1}\\\\d+\\\\-\\\\d+\") !=\"\") {\n      #start <- sub('\\\\S+:([0-9]+)\\\\-([0-9]+)', '\\\\1', input$poslowhigh)\n      #end <- sub('\\\\S+:([0-9]+)\\\\-([0-9]+)', '\\\\2', input$poslowhigh)\n      #outputvars <- outputvars[(!(outputvars$end < start)) & (!(outputvars$start > end)),]\n    #}\n    if (input$poslowhigh != \"\") {\n      #m <- regexpr(\"(\\d+)\\-(\\d+)\", x, perl=TRUE)\n      #c(low, high) <- \n      #outputvars <- outputvars[(!(outputvars$end < as.integer(input$poslow)) & !(outputvars$start > as.integer(input$poshigh))), ]\n    }\n    if (!input$gnomad) {\n      outputvars <- outputvars[outputvars$gnomad_SV_counts != 1,]\n    }\n    if (!input$thousandgenome) {\n      outputvars <- outputvars[outputvars$X1kg_SV_counts != 1,]\n    }\n    outputvars <- outputvars[outputvars$SV_type %in% input$typeInput, ]\n    \n    outputvars\n  })\n  \n  output$datatable <- renderDataTable(filteredsvs())\n}\n\nshinyApp(ui, server)\n\n",
+    "created" : 1557372177125.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "829028361",
+    "id" : "425DCFDD",
+    "lastKnownWriteTime" : 1557420197,
+    "last_content_update" : 1557420197715,
+    "path" : "~/WomenHackathon/shinySVapp/app.R",
+    "project_path" : "app.R",
+    "properties" : {
+        "source_window_id" : "",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
