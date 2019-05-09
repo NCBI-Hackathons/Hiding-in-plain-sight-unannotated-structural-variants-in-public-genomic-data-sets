@@ -1,29 +1,26 @@
-configfile: "config.yml"                                                      
-                                                                                
-IN_DIR = config['infile_dir']
-OUT_DIR = config['out_files_dir']                                               
-TEMP_DIR = config['temp_files_dir']                                             
-REF_OVER = config['ref_overlap_files']
-CHR = config['chrs']    
+configfile: "new_config.yml"
+
+REF_OVER = config['ref_overlap_prefix']
+CHR = config['chrs']
 SV = config['sv_types']
-#MEI = config['mei_types']
 
 rule all:
-	input: expand("{tempdir}/{chr}_{sv}_merged.bed", tempdir=TEMP_DIR, chr=CHR, sv=SV)
-#		"{TEMP_DIR}/annotated_svs.bed"
+	input: expand("../test/{chr}_{sv}_merged.bed", chr=CHR, sv=SV)
+#		"../test/annotated_svs.bed"
 
 rule run_SV_merges:
-	input:                                                                  
+	input:
 		"../tests/{CHR}_{SV}.bed" 
-	output:                                                                 
-		temp("{TEMP_DIR}/{CHR}_{SV}_merged.bed")
-	threads: 1                                                              
-	params:                                                                 
-		runtime="1:00:00",                                              
-		mem="1gb",                                                       
-		chr="{CHR}"
-	shell:                                                                  
-		"""                                                             
+	output:
+		temp("../tests/{CHR}_{SV}_merged.bed")
+	threads: 1
+	params:
+		runtime="1:00:00",
+		mem="1gb",
+		chr="{CHR}",
+		sv="{SV}"
+	shell:
+		"""
 		sed '1s/^/#/' {input} > {input}_temp
 		
 		if [[ {params.sv} == "MEIs" ]]
@@ -35,41 +32,28 @@ rule run_SV_merges:
 			python sv_merging.py {input}_temp {output}
 		fi
 		rm {input}_temp
-		"""  
-
-#rule run_mei_merges:
-#        input:                                                                  
-#                "../tests/{CHR}_{MEI}.bed" 
-#        output:                                                                 
-#                temp("{TEMP_DIR}/meis/{CHR}_{MEI}_merged.bed")
-#        threads: 1                                                              
-#        params:                                                                 
-#                runtime="1:00:00",                                              
-#                mem="1gb"                                                       
-#        shell:                                                                  
-#                """                                                             
-#		sed '1s/^/#/' {input} > {input}_temp
-#                python mei_merge.py {input} {output}
-#                rm {input}_temp
-#                """  
+		"""
 
 rule add_filters:
 	input:
-		sv="{TEMP_DIR}/{CHR}_{SV}_merged.bed",
-		ref=expand("{ref_dir}/{ref_overlap}_{SV}.bed", ref_dir=REF_DIR, ref_overlap=REF_OVER, sv=SV)
-#		ref=expand("{indir}/{ref_overlap}", indir=IN_DIR, ref_overlap=REF_OVER)
+		sv="../tests/{CHR}_{SV}_merged.bed",
+		gnomad="../resources/gnomad_{SV}.bed",
+		kg="../resources/1kg_{SV}.bed",
+		repeat="../resources/hg19_simpleRepeats_merged.bed"
 	output:
-		"{TEMP_DIR}/{CHR}_{SV}_annotated.bed"
+		"../tests/{CHR}_{SV}_annotated.bed"
 	shell:
 		"""
-		python ../code/get_overlap.py -i {input.sv} -r {input.ref} -o {output}
+		python ../code/get_overlap.py -i {input.sv} -r {input.gnomad} -o {output}_gnomad
+		python ../code/get_overlap.py -i {output}_gnomad -r {input.kg} -o {output}_1kg
+		python ../code/get_overlap.py -i {output}_1kg -r {input.repeat} -o {output}
 		"""
 
 rule merge_files:
 	input:
-		expand("{tempdir}/{chr}_{sv}_annotated.bed", tempdir=TEMP_DIR, chr=CHR, sv=SV)
+		expand("../tests/{chr}_{sv}_annotated.bed", chr=CHR, sv=SV)
 	output:
-		"{TEMP_DIR}/annotated_svs.bed"
+		"../tests/annotated_svs.bed"
 	shell:
 		"""
 		cat {input} > {output}
