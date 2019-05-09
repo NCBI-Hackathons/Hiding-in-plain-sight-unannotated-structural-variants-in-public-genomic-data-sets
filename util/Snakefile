@@ -1,0 +1,77 @@
+configfile: "config.yml"                                                      
+                                                                                
+IN_DIR = config['infile_dir']
+OUT_DIR = config['out_files_dir']                                               
+TEMP_DIR = config['temp_files_dir']                                             
+REF_OVER = config['ref_overlap_files']
+CHR = config['chrs']    
+SV = config['sv_types']
+#MEI = config['mei_types']
+
+rule all:
+	input: expand("{tempdir}/{chr}_{sv}_merged.bed", tempdir=TEMP_DIR, chr=CHR, sv=SV)
+#		"{TEMP_DIR}/annotated_svs.bed"
+
+rule run_SV_merges:
+	input:                                                                  
+		"../tests/{CHR}_{SV}.bed" 
+	output:                                                                 
+		temp("{TEMP_DIR}/{CHR}_{SV}_merged.bed")
+	threads: 1                                                              
+	params:                                                                 
+		runtime="1:00:00",                                              
+		mem="1gb",                                                       
+		chr="{CHR}"
+	shell:                                                                  
+		"""                                                             
+		sed '1s/^/#/' {input} > {input}_temp
+		
+		if [[ {params.sv} == "MEIs" ]]
+		then
+			## This line is to compensate for a previous bug - it currently doesn't write to a file so would need to if used
+			## awk 'BEGIN {{OFS="\t"}} {{print {params.chr},$2,$3,$4,$5,$6}}' < ../tests/chr4_MEIs.bed_temp 
+			python ../code/merge_MEI.py -i {input}_temp -o {output}
+		else
+			python sv_merging.py {input}_temp {output}
+		fi
+		rm {input}_temp
+		"""  
+
+#rule run_mei_merges:
+#        input:                                                                  
+#                "../tests/{CHR}_{MEI}.bed" 
+#        output:                                                                 
+#                temp("{TEMP_DIR}/meis/{CHR}_{MEI}_merged.bed")
+#        threads: 1                                                              
+#        params:                                                                 
+#                runtime="1:00:00",                                              
+#                mem="1gb"                                                       
+#        shell:                                                                  
+#                """                                                             
+#		sed '1s/^/#/' {input} > {input}_temp
+#                python mei_merge.py {input} {output}
+#                rm {input}_temp
+#                """  
+
+rule add_filters:
+	input:
+		sv="{TEMP_DIR}/{CHR}_{SV}_merged.bed",
+		ref=expand("{ref_dir}/{ref_overlap}_{SV}.bed", ref_dir=REF_DIR, ref_overlap=REF_OVER, sv=SV)
+#		ref=expand("{indir}/{ref_overlap}", indir=IN_DIR, ref_overlap=REF_OVER)
+	output:
+		"{TEMP_DIR}/{CHR}_{SV}_annotated.bed"
+	shell:
+		"""
+		python ../code/get_overlap.py -i {input.sv} -r {input.ref} -o {output}
+		"""
+
+rule merge_files:
+	input:
+		expand("{tempdir}/{chr}_{sv}_annotated.bed", tempdir=TEMP_DIR, chr=CHR, sv=SV)
+	output:
+		"{TEMP_DIR}/annotated_svs.bed"
+	shell:
+		"""
+		cat {input} > {output}
+		"""
+
