@@ -12,37 +12,22 @@ library("stringr")
 # 28477797-33448354
 
 #setwd("/Users/nhansen/WomenHackathon/shinySVapp")
-sv <- read_delim("test.bed", delim = "\t", col_names = TRUE) %>%
+sv <- read_delim("/Users/ariel/Dropbox/JHU/hackathon/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/resources/shiny_graphics/test.bed", delim = "\t", col_names = TRUE) %>%
   rename("chr" = "#chr") %>%
-  mutate(mean_bitscore=as.integer(mean_bitscore))
-# build deletion track 
-# define function
-func_chr <- function(chr, start, stop) {
-  
-  # build chromosome model 
-  ideoTrack <- IdeogramTrack(genome = "hg19", chromosome = chr)
-  # build gene models 
-  axisTrack <- GenomeAxisTrack()
-  data(geneModels)
-  biomTrack <- BiomartGeneRegionTrack(genome = "hg19", chromosome = chr, start = start, end = stop, name = "Gene Model", transcriptAnnotation = "symbol")
-  # plot tracks
-  plotTracks(list(ideoTrack,axisTrack,biomTrack, deletion.track), from = start, to = stop, labelPos = "below")
-}
+  mutate(mean_bitscore=as.integer(mean_bitscore)) %>%
+  mutate(width = (end-start))
 
-#deletion.track <- AnnotationTrack(data = newsv,
-#                                  start=startlist, 
-#                                  width = widthlist, 
-#                                  genome="hg19", type="l", 
-#                                  name="deletion", 
-#                                  window=10,
-#                                  group = rep(grouplist),
-#                                  # strand = "+", "-",
-#                                  chromosome=inchr)
-#
-##sv <- read.table("chr21_deletions_annotated.bed", sep="\t", header#=TRUE)
-#sv$mean_bitscore <- as.integer(sv$mean_bitscore)
-#sv$start <- as.integer(sv$start)
-#sv$end <- as.integer(sv$end)
+deletion.track <- AnnotationTrack(data=sv,
+                                  start=sv$start, 
+                                  width = sv$width, 
+                                  genome="hg19", 
+                                  type="l", 
+                                  name="SV", 
+                                  window=10,
+                                  #group = rep(grouplist),
+                                  # strand = "+", "-",
+                                  chromosome="chr21")
+# build deletion track 
 
 ui <- fluidPage (
   titlePanel("Hiding in Plain Sight"),
@@ -51,9 +36,9 @@ ui <- fluidPage (
       selectInput(inputId="chr", 
                   label="Chromosome",
                   choices=unique(sv$chr)),
-      textInput(inputId="start", label="Minimum position (e.g., 10000-20000)", value = "28477797", width = NULL,
+      textInput(inputId="start", label="Minimum position (e.g., 10000-20000)", value = "14961234", width = NULL,
                 placeholder = NULL),
-      textInput(inputId="end", label="Maximum position (e.g., 10000-20000)", value = "29448354", width = NULL,placeholder = NULL),
+      textInput(inputId="end", label="Maximum position (e.g., 10000-20000)", value = "16065902", width = NULL,placeholder = NULL),
       sliderInput("scoreMinMax", "Score", 30, 200, c(60, 100)),
       checkboxGroupInput("typeInput", "SV type",
                          choices=unique(sv$SV_type),
@@ -71,39 +56,34 @@ ui <- fluidPage (
  
 
 server <- function(input, output) {
+  sv <- sv
   filteredsvs <- reactive({
-    outputvars= sv %>%
+    outputvars=sv %>%
+    #filter(SV_type == "Insertion") %>%
     filter(chr == as.character(input$chr)) %>%
-    #filter(SV_type%in%input$SV_type) %>%
-    filter(SV_type == "Deletion") %>%
+    filter(SV_type%in%input$typeInput) %>%
     filter(start >= as.numeric(input$start)) %>%
     filter(end <= as.numeric(input$end)) %>%
-    mutate(width = (end-start)+1) #%>%
-##    filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
-##    filter(mean_bitscore <= as.numeric(input$input$scoreMinMax[2]))
-  startlist <- outputvars$start
-  widthlist <- outputvars$width
-  outputvars})
-#  grouplist <- outputvars$SV_type
-  
-
-#  deletion.track <- AnnotationTrack(data = outputvars,
-#                                    start=startlist, 
-#                                    width = widthlist, 
-#                                    genome="hg19", type="l", 
-#                                    name="deletion", 
-#                                    window=10,
-#                                    #group = rep(grouplist),
-#                                    # strand = "+", "-",
-#                                    chromosome=input$chr)})
-#  
+    mutate(width = (end-start)+1) 
+ #   filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
+  #  filter(mean_bitscore <= as.numeric(input$input$scoreMinMax[2]))
+   
+  deletion.track <- AnnotationTrack(data=outputvars,
+                                    start=outputvars$start, 
+                                    width = outputvars$width, 
+                                    genome="hg19", 
+                                    type="l", 
+                                    name="SV", 
+                                    window=10,
+                                    #group = rep(grouplist),
+                                    # strand = "+", "-",
+                                    chromosome=input$chr)
+return(deletion.track)
+  })
   output$myImage <- renderImage({
     # This file will be removed later by renderImage
     outfile <- tempfile(fileext = '.pdf')
-    # generate png
-    png(outfile, width = 1200, height = 1000, res = 210)
-    ideoTrack <- IdeogramTrack(genome = "hg19", chromosome = "chr21")
-    # build gene models 
+    
     func_chr <- function(chr, start, stop) {
       
       # build chromosome model 
@@ -112,21 +92,12 @@ server <- function(input, output) {
       axisTrack <- GenomeAxisTrack()
       data(geneModels)
       biomTrack <- BiomartGeneRegionTrack(genome = "hg19", chromosome = chr, start = start, end = stop, name = "Gene Model", transcriptAnnotation = "symbol")
-      # build sv track 
-#      deletion.track <- AnnotationTrack(data=dat,
-#                                        start=start,
-#                                        width = stop,
-#                                        genome="hg19", type="l",
-#                                        name="deletion",
-#                                        window=10,
-#                                       #group = rep(grouplist),
-#                                        # strand = "+", "-",
-#                                       chromosome=chr)
-#      # plot tracks
-      plotTracks(list(ideoTrack,axisTrack,biomTrack), from = start, to = stop, labelPos = "below")
+      # plot tracks
+      plotTracks(list(ideoTrack,axisTrack,biomTrack,deletion.track), from = start, to = stop, labelPos = "below")
     }
-
-    func_chr(filteredsvs$chr, filteredsvs$start, filteredsvs$end)
+    # generate png
+    png(outfile, width = 1200, height = 1000, res = 210)
+    func_chr(input$chr, as.numeric(input$start), as.numeric(input$end))
     dev.off()
     
     list(src = outfile,
@@ -135,8 +106,9 @@ server <- function(input, output) {
          height = 300,
          alt = "This is alternate text")
   }, deleteFile = TRUE)
-}
 
+ 
+}
 
 shinyApp(ui, server)
   
