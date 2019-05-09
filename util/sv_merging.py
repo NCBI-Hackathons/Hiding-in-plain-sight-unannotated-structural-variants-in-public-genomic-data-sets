@@ -12,14 +12,15 @@ class SV:
         self.score = float(score)
         self.sv_type = sv_type
         self.inter_sv = [self]
+        self.merged_ids = ''
 
     def __eq__(self, new_sv):
         ''' check if two SVs are the same based on start and stop coordinates '''
-        return(self.start == new_sv.start and self.stop == new_sv.stop)
+        return(self.start == new_sv.start and self.stop == new_sv.stop and self.chr == new_sv.chr and self.id_num == new_sv.id_num)
 
     def __str__(self):
         ''' print SV object for testing purposes '''
-        return(f'{self.chr}\t{self.start}\t{self.stop}\t{self.id_num.split("|")[0]}\t{self.sv_type}\t{self.score}\t{self.id_num}\n')
+        return(f'{self.chr}\t{self.start}\t{self.stop}\t{self.id_num}\t{self.sv_type}\t{self.score}\t{self.merged_ids}\n')
 
     def add_sv(self, new_sv):
         ''' add an overlapping SV '''
@@ -44,7 +45,7 @@ class SV:
         self.stop  = round(mean(stop_coords))
         self.score = round(mean(align_scores),1)
         ## combine sv IDs
-        self.id_num = '|'.join(ids)
+        self.merged_ids = '|'.join(ids)
 
 
 
@@ -56,6 +57,7 @@ args = parser.parse_args()
 
 ## Import bedfile to merge
 a = pybedtools.BedTool(args.bedfile)
+a = a.sort()
 
 ## Bedtools intersect of the same file is used here to take
 ## advatage of the reciprocal overlap option
@@ -94,18 +96,18 @@ for item in ab_intersect:
         ## A-file SV has changed
         else:
             ## merge and save the previous A-file SV
-            prev_sv.merge()
             ## only add the merged SV is if has not been previously merged with another SV
-            if curr_sv in seen_svs:
+            if prev_sv in seen_svs:
                 pass
             else:
+                prev_sv.merge()
                 merged_svs.append(prev_sv)
                 seen_svs.extend(prev_sv.inter_sv)
             
+            ## change prev_sv to new A-file SV
             if curr_sv == next_sv:
                 pass
             else:
-            ## change prev_sv to new A-file SV
                 curr_sv.add_sv(next_sv)
             prev_sv = curr_sv
 
