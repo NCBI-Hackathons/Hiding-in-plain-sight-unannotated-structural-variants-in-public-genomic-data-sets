@@ -9,11 +9,11 @@ def get_args():
 	parser.add_argument('-i','--input', 
 		help='the input bed files for MEIs', 
 		required = False, type = str,
-		default = '../test/chr1_MEIs.bed')
+		default = '../tests/chr1_MEIs.bed')
 	parser.add_argument('-o','--output', 
 		help='the output bed files for MEIs', 
 		required = False, type = str,
-		default = '../out/chr1_MEIs_merged.bed')
+		default = '../tests/chr1_MEIs_merged.bed')
 	
 	args = parser.parse_args()
 	return(args)
@@ -30,10 +30,16 @@ def changebase(line,startbase=10,endbase=10):
 
 def bedtoframe(beddat):
 	ret = beddat.to_dataframe()
+	print(ret.columns)
 	ret = ret.drop(columns=['start','end'])
-	ret.columns=['#chr','start','end','uniqueID','score','SV_type']
+	ret.columns=['#chr','start','end','merged_IDs','mean_bitscore','SV_type']
+	ret['SV_type'] = 'MET'
+	ret['uniqueID'] = [item.split('|')[0] for item in list(ret['merged_IDs'])]
 	ret['start'] = ret['start'].astype(int)
 	ret['end'] = ret['end'].astype(int)
+
+	seq_columns = ['#chr','start','end','uniqueID','SV_type','mean_bitscore','merged_IDs']
+	ret = ret.reindex(columns = seq_columns)
 	return(ret)
 
 
