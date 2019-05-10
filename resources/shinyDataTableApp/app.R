@@ -10,6 +10,7 @@ sv <- read.table("chr21_deletions_annotated.bed", sep="\t", header=TRUE)
 sv$mean_bitscore <- as.integer(sv$mean_bitscore)
 sv$start <- as.integer(sv$start)
 sv$end <- as.integer(sv$end)
+sv$width <- sv$end - sv$start + 1
 
 ui <- fluidPage (
   titlePanel("Hiding in Plain Sight"),
@@ -38,7 +39,6 @@ ui <- fluidPage (
     )
   )
 )
-
 
 server <- function(input, output) {
   filteredsvs <- reactive( {
@@ -73,6 +73,33 @@ server <- function(input, output) {
       outputvars <- data.frame()
     }
     
+  })
+  
+  tidyfilteredsvs <- reactive({
+    
+    startstop <- get_boundaries()
+    if (is.na(startstop[1])) {
+      start <- 45000000
+    }
+    else {
+      start <- startstop[1]
+    }
+    
+    if (is.na(startstop[2])) {
+      stop <- 47000000
+    }
+    else {
+      stop <- startstop[2]
+    }
+    outputvars=sv %>%
+        #filter(SV_type == "Insertion") %>%
+        filter(chr == as.character(input$chr)) %>%
+        filter(SV_type%in%input$typeInput) %>%
+        filter(start >= as.numeric(start)) %>%
+        filter(end <= as.numeric(stop)) %>%
+        mutate(width = (end-start)+1)
+      #   filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
+      #  filter(mean_bitscore <= as.numeric(input$input$scoreMinMax[2]))
   })
   
   descriptivetext <- reactive({
@@ -134,9 +161,24 @@ server <- function(input, output) {
     axisTrack <- GenomeAxisTrack()
     data(geneModels)
     biomTrack <- BiomartGeneRegionTrack(genome = "hg19", chromosome = chr, start = start, end = stop, name = "Gene Model", transcriptAnnotation = "symbol")
+    deletionTrack <- filterandcreatetrack(chr, start, stop)
+    
     # plot tracks
-    #plotTracks(list(ideoTrack,axisTrack,biomTrack,deletion.track), from = start, to = stop, labelPos = "below")
-    plotTracks(list(ideoTrack, axisTrack,biomTrack), from=start, to=stop, labelPos = "below")
+    #plotTracks(list(ideoTrack,axisTrack,biomTrack), from = start, to = stop, labelPos = "below")
+    plotTracks(list(ideoTrack, axisTrack,biomTrack, deletionTrack), from=start, to=stop, labelPos = "below")
+  }
+  
+  filterandcreatetrack <- function(chr, start, stop) {
+    outputvars <- tidyfilteredsvs()
+    deletion.track <- AnnotationTrack(data=outputvars,
+                                      #start=outputvars$start,
+                                      genome="hg19",
+                                      type="l",
+                                      name="SV",
+                                      window=10,
+                                      #group = rep(grouplist),
+                                      # strand = "+", "-",
+                                      chromosome=chr)
   }
 
   output$downloadData <- downloadHandler(
@@ -149,7 +191,8 @@ server <- function(input, output) {
   )
 
   output$testtext <- renderText(descriptivetext()) 
-  output$datatable <- renderDataTable(filteredsvs())
+  #output$datatable <- renderDataTable(filteredsvs())
+  output$datatable <- renderDataTable(tidyfilteredsvs())
   output$browserimage <- renderImage(getimage(), deleteFile = TRUE)
 
 }
