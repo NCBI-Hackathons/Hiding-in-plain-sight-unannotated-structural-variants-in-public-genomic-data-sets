@@ -11,8 +11,6 @@ library("shinyWidgets")
 library("stringr")
 # 28477797-33448354
 
-#setwd("/Users/nhansen/WomenHackathon/shinySVapp")
-#sv <- read_delim("chr21_deletions_annotated.bed", delim = "\t", col_names = TRUE) %>%
 sv <- read_delim("annotated_svs.bed", delim = "\t", col_names = TRUE) %>%
   rename("chr" = "#chr") %>%
   mutate(mean_bitscore=as.integer(mean_bitscore)) %>%
@@ -42,9 +40,9 @@ ui <- fluidPage (
       checkboxGroupInput("typeInput", "SV type",
                          choices=unique(sv$SV_type),
                          selected=sv$SV_type[1]),
-      checkboxInput("gnomadonly", "Gnomad SV Only", value=FALSE),
-      checkboxInput("thousandgenomeonly", "ThousandGenomes SV Only", value=FALSE),
-      checkboxInput("nonrepeatseq", "Nonrepetitive SV Only", value=TRUE)
+      checkboxGroupInput("annotations", "Annotations",
+                         choices=annotation_options,
+                         selected=c())
     ),
     mainPanel(
       tabsetPanel(
@@ -67,12 +65,14 @@ server <- function(input, output) {
       filter(SV_type%in%input$typeInput) %>%
       filter(start >= as.numeric(input$start)) %>%
       filter(end <= as.numeric(input$end)) %>%
-      filter(!(input$gnomadonly) | (gnomad_only > 0)) %>%
-      filter(!(input$thousandgenomeonly) | (onekg_only > 0)) %>%
-      filter(!(input$nonrepeatseq) | (non_repeat_regions > 0)) %>%
       filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
-      filter(mean_bitscore <= as.numeric(input$scoreMinMax[2])) #%>%
-            #mutate(width = (end-start)+1) 
+      filter(mean_bitscore <= as.numeric(input$scoreMinMax[2]))
+
+    for (annottype in annotation_options) {
+      if (annottype %in% input$annotations) {
+        outputvars <- outputvars[ outputvars[,annottype] > 0, ]
+      }
+    }
     return(outputvars)
   })  
   
@@ -117,7 +117,7 @@ server <- function(input, output) {
         plotTracks(list(ideoTrack,axisTrack,biomTrack), from = start, to = stop, labelPos = "below")
       }
       else {
-        plotTracks(list(ideoTrack,axisTrack,biomTrack,mydeletiontrack), from = start, to = stop, labelPos = "below", Deletion="darkred", Insertion="darkgreen", TandemDup = "blue", MET = "yellow", legend=TRUE)
+        plotTracks(list(ideoTrack,axisTrack,biomTrack,mydeletiontrack), from = start, to = stop, labelPos = "below", Deletion="darkred", Insertion="darkgreen", Inversion="purple", TandemDup = "blue", MEI = "yellow", legend=TRUE)
       }
     }
     # generate png
