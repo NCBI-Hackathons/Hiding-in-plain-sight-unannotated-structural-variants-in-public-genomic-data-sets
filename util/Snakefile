@@ -1,16 +1,15 @@
 configfile: "config.yml"
 
-REF_OVER = config['ref_overlap_prefix']
 CHR = config['chrs']
 SV = config['sv_types']
 
 rule all:
 	input: 
-		"../temp_files/annotated_svs.bed"
+		"../output/annotated_svs.bed"
 
 rule run_SV_merges:
 	input:
-		"../tests/{CHR}_{SV}.bed" 
+		"../tests/{CHR}_{SV}.bed"
 	output:
 		temp("../temp_files/{CHR}_{SV}_merged.bed")
 	params:
@@ -55,6 +54,7 @@ rule add_flags:
 		repeat="../temp_files/repeats_single_bp.bed",
 		pseudo="../resources/RefSeq_hg19_introns_mod.bed"
 	output:
+		#"../temp_files/{CHR}_{SV}_annotated.bed"
 		temp("../temp_files/{CHR}_{SV}_annotated.bed")
 	params:
 		sv="{SV}"
@@ -64,42 +64,48 @@ rule add_flags:
 			python ../code/get_overlap.py -i {input.sv} -r {input.gnomad} -o {output}_gnomad -p 0.5 -m -n gnomad_only
 			python ../code/get_overlap.py -i {output}_gnomad -r {input.kg} -o {output}_1kg -p 0.5 -m -n onekg_only 
 			python ../code/get_overlap.py -i {output}_1kg -r {input.repeat} -o {output}_repeat -m -v -n non_repeat_regions
-			python ../code/get_overlap.py -i {output}_repeat -r {input.pseudo} -o {output} -m -n pseudogenes
+			python ../code/get_overlap.py -i {output}_repeat -r {input.pseudo} -o {output}_pseudo -p 0.01 -m -n pseudogenes
 		else
 			python ../code/get_overlap.py -i {input.sv} -r {input.gnomad} -o {output}_gnomad -p 0.5 -n gnomad_only
 			python ../code/get_overlap.py -i {output}_gnomad -r {input.kg} -o {output}_1kg -p 0.5 -n onekg_only
 			python ../code/get_overlap.py -i {output}_1kg -r {input.repeat} -o {output}_repeat -v -n non_repeat_regions
-			python ../code/get_overlap.py -i {output}_repeat -r {input.pseudo} -o {output} -n pseduogenes
+			python ../code/get_overlap.py -i {output}_repeat -r {input.pseudo} -o {output}_pseudo -p 0.01 -n pseduogenes
 		fi
+
+
+		awk 'BEGIN {{OFS="\t"}} $11=="1" {{$5="Pseudogene"; print}} {{print $0}}' {output}_pseudo | cut -f1-10 > {output}
 
 		rm {output}_gnomad
 		rm {output}_1kg
 		rm {output}_repeat
 		"""
 
-#rule change_pseudogene_sv_type:
-#	input:
-#		"../temp_files/{CHR}_{SV}_annotated_pseudo_flag.bed"
-#	output:
-#		"../temp_files/{CHR}_{SV}_annotated.bed"	
-#	shell:
-#		awk '{{if ($10=="1")
-#			$5="pseudogene",$11=""; print $0;
-#		else
-#			$11="",print $0;
-#		}} {input} 
-
 rule merge_files:
 	input:
 		expand("../temp_files/{chr}_{sv}_annotated.bed", chr=CHR, sv=SV)
 	output:
-		"../temp_files/annotated_svs.bed"
+		"../output/annotated_svs.bed"
 	shell:
 		"""
-		head -n 1 {input} > ../temp_files/temp_header.txt
-		cat {input} | grep -v "#"  > {output}_temp
-		cat ../temp_files/temp_header.txt {output}_temp > {output}
-		rm {output}_temp
+		## Combine files
+		cat {input} > {output}_temp1
+
+		## get the header of the first file and save to temporary file
+		head -n 1 {output}_temp1 > ../temp_files/temp_header.txt
+		
+		## remove the headers from the combinded file
+		grep -v "#" {output}_temp1 > {output}_temp2
+
+		## add the head from the temp file to the combined file
+		cat ../temp_files/temp_header.txt {output}_temp2 > {output}_temp3
+
+		## this accounts for a an earlier bug where MEIs were coded as METs
+		sed 's/MET/MEI/g' <  {output}_temp3 > {output}
+
+		## remove the temporary files
+		rm {output}_temp1
+		rm {output}_temp2
+		rm {output}_temp3
 		rm ../temp_files/temp_header.txt
 		"""
 
