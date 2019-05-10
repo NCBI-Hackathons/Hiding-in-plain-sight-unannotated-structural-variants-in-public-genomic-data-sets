@@ -32,6 +32,8 @@ def get_args():
 		help='the name for the overlap flag',
 		required = False, type = str,
 		default = 'gnormad')
+	parser.add_argument('-v','--inverse',
+		help = 'output the inverse labels',action='store_true')
 	
 	args = parser.parse_args()
 	return(args)
@@ -56,6 +58,15 @@ def get_overlap(dat,prop_thresh):
 			overlaplist.append(0)
 	return(overlaplist)
 
+def get_overlap_inverse(dat,prop_thresh):
+	overlaplist = []
+	for index, row in dat.iterrows():
+		if int(row[len(row)-1])>0:
+			overlaplist.append(0)
+		else:
+			overlaplist.append(1)
+	return(overlaplist)
+
 def get_header(filename):
 	f = open(filename)
 	headerline = f.readline()
@@ -64,6 +75,8 @@ def get_header(filename):
 
 def changebase(line,startbase=10,endbase=10):
 	line.start = line.start-startbase
+	if line.start<0:
+		line.start=0
 	line.end = line.end+endbase
 	return(line)
 
@@ -84,7 +97,11 @@ def overlap_bed(args):
 			intersectdat = dat.intersect(ref, c=True)
 
 	datf = intersectdat.to_dataframe(header=None)
-	overlap = get_overlap(datf,prop_thresh=args.prop)
+	if args.inverse:
+		overlap = get_overlap_inverse(datf,prop_thresh=args.prop)
+	else:
+		overlap = get_overlap(datf,prop_thresh=args.prop)
+		
 	datf[args.nameflag] = overlap
 	#datf.columns=headerdat+headerref+['length','overlap']
 	datf.columns=headerdat+['count',args.nameflag]
