@@ -2,7 +2,6 @@ library("shiny")
 library("shinyWidgets")
 library("stringr")
 
-setwd("/Users/nhansen/WomenHackathon/shinySVapp")
 
 sv <- read.table("chr21_deletions_annotated.bed", sep="\t", header=TRUE)
 sv$mean_bitscore <- as.integer(sv$mean_bitscore)
@@ -51,10 +50,9 @@ server <- function(input, output) {
         outputvars <- outputvars[outputvars$chr==input$chr,]
       }
       if (!is.na(str_extract(input$poslowhigh, "(\\S*:){0,1}\\d+\\-\\d+"))) {
-        #outputvars <- outputvars[c(),]
-        start <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\1', input$poslowhigh)
-        end <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh)
-        outputvars <- outputvars[(!(outputvars$end < start) & !(outputvars$start > end)),]
+        start <- as.integer(sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh))
+        end <- as.integer(sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\3', input$poslowhigh))
+        outputvars <- outputvars[!((outputvars$end < start) | (outputvars$start > end)),]
       }
       gnomad = "gnomad_SV_counts" %in% input$sv_seen
       if (!gnomad) {
