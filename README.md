@@ -40,7 +40,7 @@ This project may be on GitHub and it may have a great name (HIPS), but we cannot
 ---
 ![flowchart](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/prelim_flowchart.png)
 
-# Web Interface (hosting TBD)
+# Web Interface (hosted at https://hidinginplainsight.shinyapps.io/MergedApps/)
 ## Graph View
 ![graph_view](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/graph_view_screenshot.png)
 
