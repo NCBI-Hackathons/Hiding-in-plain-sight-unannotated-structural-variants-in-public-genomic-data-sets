@@ -9,11 +9,11 @@ def get_args():
 	parser.add_argument('-i','--input', 
 		help='the input bed files for overlap', 
 		required = False, type = str,
-		default = '../test/chr1_MEIs.bed')
+		default = '../tests/chr1_MEIs_merged.bed')
 	parser.add_argument('-r','--ref', 
 		help='the bed file for overlap reference', 
 		required = False, type = str,
-		default = '../out/chr1_MEIs_merged.bed')
+		default = '../resources/1kg_MEI.bed')
 	parser.add_argument('-p','--prop',
 		help='the proportion for overlap',
 		required = False,default=0.9)
@@ -22,6 +22,12 @@ def get_args():
 	parser.add_argument('-s','--overlapstyle', 
 		help='the overlapstyle', 
 		required = False, choices = ['r','n'], default='r')
+	parser.add_argument("-m", "--MEI", 
+		help="turn on if input is MEI",action="store_true")
+	parser.add_argument('-b','--basepair', 
+		help='the length of segment to expand', 
+		required = False, type = int,
+		default = 10)
 	
 	args = parser.parse_args()
 	return(args)
@@ -52,6 +58,10 @@ def get_header(filename):
 	ret = headerline.rstrip().split('\t')
 	return(ret)
 
+def changebase(line,startbase=10,endbase=10):
+	line.start = line.start-startbase
+	line.end = line.end+endbase
+	return(line)
 
 def overlap_bed(args):
 	dat = BedTool(args.input)
@@ -60,13 +70,16 @@ def overlap_bed(args):
 	#headerref = get_header(args.ref)
 	#headerref = [s + '_ref' for s in headerref]
 
-	if args.overlapstyle=='r':
-		intersectdat = dat.intersect(ref, c=True,f=args.prop,r=True)
-	elif args.overlapstyle=='n':
-		intersectdat = dat.intersect(ref, c=True,f=args.prop)
+	if args.MEI:
+		ref = ref.each(changebase,startbase=args.basepair,endbase=args.basepair)
+		intersectdat = dat.intersect(ref, c=True)
+	else:
+		if args.overlapstyle=='r':
+			intersectdat = dat.intersect(ref, c=True,f=args.prop,r=True)
+		elif args.overlapstyle=='n':
+			intersectdat = dat.intersect(ref, c=True)
 
 	datf = intersectdat.to_dataframe(header=None)
-	print(datf.iloc[0:5,:])
 	overlap = get_overlap(datf,prop_thresh=args.prop)
 	datf['overlap'] = overlap
 	#datf.columns=headerdat+headerref+['length','overlap']
