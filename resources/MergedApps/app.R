@@ -12,7 +12,8 @@ library("stringr")
 # 28477797-33448354
 
 #setwd("/Users/nhansen/WomenHackathon/shinySVapp")
-sv <- read_delim("chr21_deletions_annotated.bed", delim = "\t", col_names = TRUE) %>%
+#sv <- read_delim("chr21_deletions_annotated.bed", delim = "\t", col_names = TRUE) %>%
+sv <- read_delim("annotated_svs.bed", delim = "\t", col_names = TRUE) %>%
   rename("chr" = "#chr") %>%
   mutate(mean_bitscore=as.integer(mean_bitscore)) %>%
   mutate(width = (end-start))
@@ -63,8 +64,9 @@ server <- function(input, output) {
       filter(SV_type%in%input$typeInput) %>%
       filter(start >= as.numeric(input$start)) %>%
       filter(end <= as.numeric(input$end)) %>%
-      filter(!(input$gnomadonly) | (gnomad_SV_counts > 0)) %>%
-      filter(!(input$thousandgenomeonly) | ("1kg_SV_counts" > 0)) %>%
+      filter(!(input$gnomadonly) | (gnomad_only > 0)) %>%
+      filter(!(input$thousandgenomeonly) | (onekg_only > 0)) %>%
+      filter(!(input$nonrepeatseq) | (non_repeat_regions > 0)) %>%
       filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
       filter(mean_bitscore <= as.numeric(input$scoreMinMax[2])) #%>%
             #mutate(width = (end-start)+1) 
