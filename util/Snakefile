@@ -1,0 +1,105 @@
+configfile: "config.yml"
+
+REF_OVER = config['ref_overlap_prefix']
+CHR = config['chrs']
+SV = config['sv_types']
+
+rule all:
+	input: 
+		"../temp_files/annotated_svs.bed"
+
+rule run_SV_merges:
+	input:
+		"../tests/{CHR}_{SV}.bed" 
+	output:
+		temp("../temp_files/{CHR}_{SV}_merged.bed")
+	params:
+		sv="{SV}"
+	shell:
+		"""
+
+		## This adds a '#' sign at the beginning of the header line to
+		## avoid errors when using pybedtools in the following scripts
+
+		sed '1s/^/#/' {input} > {input}_temp
+		
+		## The merging step is handled in two different was depending on 
+		## the type of structural variant: 1. MEIs, 2. DEL,DUP,INV
+
+		if [[ {params.sv} == "MEIs" ]];	then
+			python ../code/merge_MEI.py -i {input}_temp -o {output}
+		else
+			python sv_merging.py {input}_temp {output}
+		fi
+
+		## This removes the temporary bed file with the modified header
+		rm {input}_temp
+
+		"""
+
+rule modify_repeat_ref:
+	input:
+		"../resources/hg19_simpleRepeats_merged_mod.bed"
+	output:
+		temp("../temp_files/repeats_single_bp.bed")
+	shell:
+		"""
+		awk 'BEGIN {{OFS="\t"}} {{print $1,$2,$2+1}}' < {input} > {output}
+		"""
+
+rule add_flags:
+	input:
+		sv="../temp_files/{CHR}_{SV}_merged.bed",
+		gnomad="../resources/gnomad_{SV}.bed",
+		kg="../resources/1kg_{SV}.bed",
+		repeat="../temp_files/repeats_single_bp.bed",
+		pseudo="../resources/RefSeq_hg19_introns_mod.bed"
+	output:
+		temp("../temp_files/{CHR}_{SV}_annotated.bed")
+	params:
+		sv="{SV}"
+	shell:
+		"""
+		if [[ {params.sv} == "MEIs" ]];	then
+			python ../code/get_overlap.py -i {input.sv} -r {input.gnomad} -o {output}_gnomad -p 0.5 -m -n gnomad_only
+			python ../code/get_overlap.py -i {output}_gnomad -r {input.kg} -o {output}_1kg -p 0.5 -m -n onekg_only 
+			python ../code/get_overlap.py -i {output}_1kg -r {input.repeat} -o {output}_repeat -m -v -n non_repeat_regions
+			python ../code/get_overlap.py -i {output}_repeat -r {input.pseudo} -o {output} -m -n pseudogenes
+		else
+			python ../code/get_overlap.py -i {input.sv} -r {input.gnomad} -o {output}_gnomad -p 0.5 -n gnomad_only
+			python ../code/get_overlap.py -i {output}_gnomad -r {input.kg} -o {output}_1kg -p 0.5 -n onekg_only
+			python ../code/get_overlap.py -i {output}_1kg -r {input.repeat} -o {output}_repeat -v -n non_repeat_regions
+			python ../code/get_overlap.py -i {output}_repeat -r {input.pseudo} -o {output} -n pseduogenes
+		fi
+
+		rm {output}_gnomad
+		rm {output}_1kg
+		rm {output}_repeat
+		"""
+
+#rule change_pseudogene_sv_type:
+#	input:
+#		"../temp_files/{CHR}_{SV}_annotated_pseudo_flag.bed"
+#	output:
+#		"../temp_files/{CHR}_{SV}_annotated.bed"	
+#	shell:
+#		awk '{{if ($10=="1")
+#			$5="pseudogene",$11=""; print $0;
+#		else
+#			$11="",print $0;
+#		}} {input} 
+
+rule merge_files:
+	input:
+		expand("../temp_files/{chr}_{sv}_annotated.bed", chr=CHR, sv=SV)
+	output:
+		"../temp_files/annotated_svs.bed"
+	shell:
+		"""
+		head -n 1 {input} > ../temp_files/temp_header.txt
+		cat {input} | grep -v "#"  > {output}_temp
+		cat ../temp_files/temp_header.txt {output}_temp > {output}
+		rm {output}_temp
+		rm ../temp_files/temp_header.txt
+		"""
+
