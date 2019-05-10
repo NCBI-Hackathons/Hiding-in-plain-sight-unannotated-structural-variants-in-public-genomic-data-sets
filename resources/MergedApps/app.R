@@ -60,14 +60,17 @@ ui <- fluidPage (
 server <- function(input, output) {
 
   filtered_svs <- reactive({
-    outputvars = sv %>%
-      filter(chr == as.character(input$chr)) %>%
-      filter(SV_type%in%input$typeInput) %>%
-      filter(start >= as.numeric(input$start)) %>%
-      filter(end <= as.numeric(input$end)) %>%
-      filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
-      filter(mean_bitscore <= as.numeric(input$scoreMinMax[2]))
-
+    withProgress(message = 'Loading table', value = 0, {
+      incProgress(1/2, detail = 'Filtering SVs')
+      outputvars = sv %>%
+        filter(chr == as.character(input$chr)) %>%
+        filter(SV_type%in%input$typeInput) %>%
+        filter(start >= as.numeric(input$start)) %>%
+        filter(end <= as.numeric(input$end)) %>%
+        filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
+        filter(mean_bitscore <= as.numeric(input$scoreMinMax[2]))
+      incProgress(2/2, detail = paste('Finish filtering SVs'))
+    })
     for (annottype in annotation_options) {
       if (annottype %in% input$annotations) {
         outputvars <- outputvars[ outputvars[,annottype] > 0, ]
@@ -80,17 +83,21 @@ server <- function(input, output) {
   deletiontrack <- reactive({
     outputvars <- filtered_svs()
     if (length(outputvars$start) > 0) {
-      deletion.track <- AnnotationTrack(data=outputvars,
-                                        start=outputvars$start, 
-                                        width = outputvars$width, 
-                                        genome="hg19", 
-                                        type="l", 
-                                        name="SV", 
-                                        window=10,
-                                        #group = rep(grouplist),
-                                        # strand = "+", "-",
-                                        chromosome=input$chr)
+      withProgress(message = 'Deletion track', value = 0, {
+        incProgress(1/2, detail = "Annotating track")
+        deletion.track <- AnnotationTrack(data=outputvars,
+                                          start=outputvars$start, 
+                                          width = outputvars$width, 
+                                          genome="hg19", 
+                                          type="l", 
+                                          name="SV", 
+                                          window=10,
+                                          #group = rep(grouplist),
+                                          # strand = "+", "-",
+                                          chromosome=input$chr)
       feature(deletion.track) <- outputvars$SV_type
+      incProgress(2/2, detail = paste('Finish annotating track'))
+      })
       return(deletion.track)
     }
     else {
@@ -100,30 +107,34 @@ server <- function(input, output) {
   })
   
   output$myImage <- renderImage({
-    # This file will be removed later by renderImage
-    outfile <- tempfile(fileext = '.pdf')
+    withProgress(message = 'Making plot', value = 0, {
+      # This file will be removed later by renderImage
+      outfile <- tempfile(fileext = '.pdf')
     
-    func_chr <- function(chr, start, stop) {
+      func_chr <- function(chr, start, stop) {
       
-      # build chromosome model 
-      ideoTrack <- IdeogramTrack(genome = "hg19", chromosome = chr)
-      # build gene models 
-      axisTrack <- GenomeAxisTrack()
-      data(geneModels)
-      biomTrack <- BiomartGeneRegionTrack(genome = "hg19", chromosome = chr, start = start, end = stop, name = "Gene Model", transcriptAnnotation = "symbol")
-      # plot tracks
-      mydeletiontrack <- deletiontrack()
-      if (is.null(mydeletiontrack)) {
-        plotTracks(list(ideoTrack,axisTrack,biomTrack), from = start, to = stop, labelPos = "below")
+        # build chromosome model 
+        ideoTrack <- IdeogramTrack(genome = "hg19", chromosome = chr)
+        # build gene models 
+        axisTrack <- GenomeAxisTrack()
+        data(geneModels)
+        biomTrack <- BiomartGeneRegionTrack(genome = "hg19", chromosome = chr, start = start, end = stop, name = "Gene Model", transcriptAnnotation = "symbol")
+        # plot tracks
+        mydeletiontrack <- deletiontrack()
+        if (is.null(mydeletiontrack)) {
+         plotTracks(list(ideoTrack,axisTrack,biomTrack), from = start, to = stop, labelPos = "below")
+        }
+        else {
+          plotTracks(list(ideoTrack,axisTrack,biomTrack,mydeletiontrack), from = start, to = stop, labelPos = "below", Deletion="darkred", Insertion="darkgreen", Inversion="purple", TandemDup = "blue", MEI = "yellow", legend=TRUE)
+        }
       }
-      else {
-        plotTracks(list(ideoTrack,axisTrack,biomTrack,mydeletiontrack), from = start, to = stop, labelPos = "below", Deletion="darkred", Insertion="darkgreen", Inversion="purple", TandemDup = "blue", MEI = "yellow", legend=TRUE)
-      }
-    }
-    # generate png
-    png(outfile, width = 1200, height = 1000, res = 210)
-    func_chr(input$chr, as.numeric(input$start), as.numeric(input$end))
-    dev.off()
+      # generate png
+      png(outfile, width = 1200, height = 1000, res = 210)
+      incProgress(1/2, detail = "Processing data")
+      func_chr(input$chr, as.numeric(input$start), as.numeric(input$end))
+      incProgress(2/2, detail = "Generating plot")
+      dev.off()
+    })
     
     list(src = outfile,
          contentType = 'image/pdf',
