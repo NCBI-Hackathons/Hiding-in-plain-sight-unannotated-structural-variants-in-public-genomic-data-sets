@@ -24,16 +24,6 @@ sv$mean_bitscore <- as.integer(sv$mean_bitscore)
 sv$start <- as.integer(sv$start)
 sv$end <- as.integer(sv$end)
 
-deletion.track <- AnnotationTrack(data=sv,
-                                  start=sv$start, 
-                                  width = sv$width, 
-                                  genome="hg19", 
-                                  type="l", 
-                                  name="SV", 
-                                  window=10,
-                                  chromosome=sv$chr)
-# build deletion track 
-
 ui <- fluidPage (
   titlePanel("Hiding in Plain Sight"),
   sidebarLayout(
