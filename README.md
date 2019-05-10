@@ -41,6 +41,15 @@ This project may be on GitHub and it may have a great name (HIPS), but we cannot
 ---
 ![flowchart](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/prelim_flowchart.png)
 
+# Web Interface (hosting TBD)
+## Graph View
+![graph_view](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/graph_view_screenshot.png)
+
+## Table View
+![graph_view](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/table_view_screenshot.png)
+
+---
+
 ## Results from applying to gnomAD SNV VCFs:
 ![counts](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/Num_SVs_by_chrom.jpeg)
 
