@@ -1,61 +1,85 @@
-configfile: "new_config.yml"
+configfile: "config.yml"
 
 REF_OVER = config['ref_overlap_prefix']
 CHR = config['chrs']
 SV = config['sv_types']
 
 rule all:
-	input: expand("../test/{chr}_{sv}_merged.bed", chr=CHR, sv=SV)
-#		"../test/annotated_svs.bed"
+	input: 
+		#expand("../test/{chr}_{sv}_merged.bed", chr=CHR, sv=SV)
+		"../temp_files/annotated_svs.bed"
+		#expand("../tests/{chr}_{sv}_annotated.bed", chr=CHR, sv=SV)
+		
 
 rule run_SV_merges:
 	input:
 		"../tests/{CHR}_{SV}.bed" 
 	output:
-		temp("../tests/{CHR}_{SV}_merged.bed")
+		temp("../temp_files/{CHR}_{SV}_merged.bed")
 	threads: 1
 	params:
 		runtime="1:00:00",
 		mem="1gb",
-		chr="{CHR}",
 		sv="{SV}"
 	shell:
 		"""
+
+		## This adds a '#' sign at the beginning of the header line to
+		## aviod errors when using pybedtools in the following scripts
+
 		sed '1s/^/#/' {input} > {input}_temp
 		
-		if [[ {params.sv} == "MEIs" ]]
-		then
-			## This line is to compensate for a previous bug - it currently doesn't write to a file so would need to if used
-			## awk 'BEGIN {{OFS="\t"}} {{print {params.chr},$2,$3,$4,$5,$6}}' < ../tests/chr4_MEIs.bed_temp 
+		## The merging step is handled in two different was depending on 
+		## the type of structural variant: 1. MEIs, 2. DEL,DUP,INV
+
+		if [[ {params.sv} == "MEIs" ]];	then
 			python ../code/merge_MEI.py -i {input}_temp -o {output}
 		else
 			python sv_merging.py {input}_temp {output}
 		fi
+
+		## This removes the temporary bed file with the modified header
 		rm {input}_temp
+
+		"""
+
+rule modify_repeat_ref:
+	input:
+		"../resources/hg19_simpleRepeats_merged.bed"
+	output:
+		temp("../temp_files/repeats_single_bp.bed")
+	shell:
+		"""
+		awk 'BEGIN {{OFS="\t"}} {{print $1,$2,$2+1}}' < {input} > {output}
 		"""
 
 rule add_filters:
 	input:
-		sv="../tests/{CHR}_{SV}_merged.bed",
+		sv="../temp_files/{CHR}_{SV}_merged.bed",
 		gnomad="../resources/gnomad_{SV}.bed",
 		kg="../resources/1kg_{SV}.bed",
-		repeat="../resources/hg19_simpleRepeats_merged.bed"
+		repeat="../temp_files/repeats_single_bp.bed"
 	output:
-		"../tests/{CHR}_{SV}_annotated.bed"
+		temp("../temp_files/{CHR}_{SV}_annotated.bed")
 	shell:
 		"""
 		python ../code/get_overlap.py -i {input.sv} -r {input.gnomad} -o {output}_gnomad
 		python ../code/get_overlap.py -i {output}_gnomad -r {input.kg} -o {output}_1kg
+		rm {output}_gnomad
 		python ../code/get_overlap.py -i {output}_1kg -r {input.repeat} -o {output}
+		rm {output}_1kg
 		"""
 
 rule merge_files:
 	input:
-		expand("../tests/{chr}_{sv}_annotated.bed", chr=CHR, sv=SV)
+		expand("../temp_files/{chr}_{sv}_annotated.bed", chr=CHR, sv=SV)
 	output:
-		"../tests/annotated_svs.bed"
+		"../temp_files/annotated_svs.bed"
 	shell:
 		"""
-		cat {input} > {output}
+		head -n 1 {input} > temp_header.txt
+		cat {input} > {output}_temp
+		grep -o '^[^#]*' {output}_temp > {output}
+		rm {output}_temp
 		"""
 
