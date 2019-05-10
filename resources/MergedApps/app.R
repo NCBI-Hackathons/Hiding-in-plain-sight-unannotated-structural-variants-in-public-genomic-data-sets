@@ -31,8 +31,6 @@ deletion.track <- AnnotationTrack(data=sv,
                                   type="l", 
                                   name="SV", 
                                   window=10,
-                                  #group = rep(grouplist),
-                                  # strand = "+", "-",
                                   chromosome=sv$chr)
 # build deletion track 
 
@@ -50,10 +48,14 @@ ui <- fluidPage (
       checkboxGroupInput("typeInput", "SV type",
                          choices=unique(sv$SV_type),
                          selected=sv$SV_type[1]),
-      checkboxInput("gnomad", "Gnomad SV", value=TRUE),
-      checkboxInput("thousandgenome", "ThousandGenomes SV", value=TRUE)
-
-      
+      checkboxInput("gnomadonly", "Gnomad SV Only", value=FALSE),
+      checkboxInput("thousandgenomeonly", "ThousandGenomes SV Only", value=FALSE),
+      checkboxInput("nonrepeatseq", "Nonrepetitive SV Only", value=TRUE),
+      downloadBttn(
+        outputId = "downloadData",
+        style = "bordered",
+        color = "primary"
+      )
     ),
     mainPanel(
       tabsetPanel(
@@ -69,56 +71,20 @@ ui <- fluidPage (
 
 
 server <- function(input, output) {
-  
 
-    filtered <- reactive( {
-         outputvars <- sv
-         if (is.integer(input$scoreMinMax[1])) {
-           outputvars <- outputvars[outputvars$mean_bitscore >= input$scoreMinMax[1], ]
-         }
-         if (is.integer(input$scoreMinMax[2])) {
-           outputvars <- outputvars[outputvars$mean_bitscore <= input$scoreMinMax[2], ]
-         }
-        # if (input$chr != "") {
-         #  outputvars <- outputvars[outputvars$chr==input$chr,]
-         #}
-         #if (!is.na(str_extract(input$poslowhigh, "(\\S*:){0,1}\\d+\\-\\d+"))) {
-          # outputvars <- outputvars[c(),]
-           #start <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\1', input$poslowhigh)
-           #end <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh)
-           #outputvars <- outputvars[(!(outputvars$end < start) & !(outputvars$start > end)),]
-       #  if (input$start != "") {
-      #     outputvars <- outputvars[outputvars$start==input$start,]
-      #   }
-      #   if (input$end != "") {
-      #     outputvars <- outputvars[outputvars$end==input$end,]
-      #   }
-           
-           
-         
-         gnomad = "gnomad_SV_counts" %in% input$sv_seen
-         if (!gnomad) {
-           outputvars <- outputvars[outputvars$gnomad_SV_counts == 0,]
-         }
-         kg = "X1kg_SV_counts" %in% input$sv_seen
-         if (!kg) {
-           outputvars <- outputvars[outputvars$X1kg_SV_counts == 0,]
-         }
-         simpleseq = "simple_sequence_flag" %in% input$sv_seen
-         if (!simpleseq) {
-           outputvars <- outputvars[outputvars$simple_sequence_flag == 0,]
-         }
-        outputvars <- outputvars[outputvars$SV_type %in% input$typeInput, ]
-        
-        
-        outputvars=sv %>%
-          filter(chr == as.character(input$chr)) %>%
-          filter(start >= as.numeric(input$start)) %>%
-          filter(end <= as.numeric(input$end))
-        
-        outputvars
-      
-  })
+  filtered_svs <- reactive({
+    outputvars = sv %>%
+      filter(chr == as.character(input$chr)) %>%
+      filter(SV_type%in%input$typeInput) %>%
+      filter(start >= as.numeric(input$start)) %>%
+      filter(end <= as.numeric(input$end)) %>%
+      filter(!(input$gnomadonly) | (gnomad_SV_counts > 0)) %>%
+      filter(!(input$thousandgenomeonly) | ("1kg_SV_counts" > 0)) %>%
+      filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
+      filter(mean_bitscore <= as.numeric(input$scoreMinMax[2])) #%>%
+            #mutate(width = (end-start)+1) 
+    return(outputvars)
+  })  
   
   filteredsvs1 <- reactive({
    
@@ -134,24 +100,30 @@ server <- function(input, output) {
     #   filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
     #  filter(mean_bitscore <= as.numeric(input$input$scoreMinMax[2]))
     
-    deletion.track <- AnnotationTrack(data=outputvars,
-                                      start=outputvars$start, 
-                                      width = outputvars$width, 
-                                      genome="hg19", 
-                                      type="l", 
-                                      name="SV", 
-                                      window=10,
-                                      #group = rep(grouplist),
-                                      # strand = "+", "-",
-                                      chromosome=input$chr)
-    return(deletion.track)
     
   
   })
-  output$results <- renderTable({
-    filtered()
-  })
   
+  deletiontrack <- reactive({
+    outputvars <- filtered_svs()
+    if (length(outputvars$start) > 0) {
+      deletion.track <- AnnotationTrack(data=outputvars,
+                                        start=outputvars$start, 
+                                        width = outputvars$width, 
+                                        genome="hg19", 
+                                        type="l", 
+                                        name="SV", 
+                                        window=10,
+                                        #group = rep(grouplist),
+                                        # strand = "+", "-",
+                                        chromosome=input$chr)
+      return(deletion.track)
+    }
+    else {
+      return(NULL)
+    }
+    
+  })
   
   output$myImage <- renderImage({
     # This file will be removed later by renderImage
@@ -166,7 +138,13 @@ server <- function(input, output) {
       data(geneModels)
       biomTrack <- BiomartGeneRegionTrack(genome = "hg19", chromosome = chr, start = start, end = stop, name = "Gene Model", transcriptAnnotation = "symbol")
       # plot tracks
-      plotTracks(list(ideoTrack,axisTrack,biomTrack,deletion.track), from = start, to = stop, labelPos = "below")
+      mydeletiontrack <- deletiontrack()
+      if (is.null(mydeletiontrack)) {
+        plotTracks(list(ideoTrack,axisTrack,biomTrack), from = start, to = stop, labelPos = "below")
+      }
+      else {
+        plotTracks(list(ideoTrack,axisTrack,biomTrack,mydeletiontrack), from = start, to = stop, labelPos = "below")
+      }
     }
     # generate png
     png(outfile, width = 1200, height = 1000, res = 210)
@@ -179,16 +157,17 @@ server <- function(input, output) {
          height = 300,
          alt = "This is alternate text")
   }, deleteFile = TRUE)
+
+  output$datatable <- renderDataTable(filtered_svs())
   
-  
-  
-  
-  
-  output$datatable <- renderDataTable(filtered())
- 
- 
-    
-  
+  output$downloadData <- downloadHandler(
+    filename = function(file) {
+      paste('data-', Sys.Date(), '.csv', sep='')
+    },
+    content = function(con) {
+      write.csv(filtered_svs(), con)
+    }
+  )
   
 }
 
