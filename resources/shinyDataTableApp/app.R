@@ -24,7 +24,8 @@ ui <- fluidPage (
       checkboxGroupInput("sv_seen", "Annotation",
                          choices=names(sv)[8:ncol(sv)],
                          selected=names(sv)[8:ncol(sv)]),
-      radioButtons("display", "", choiceNames=c("Table", "Figure", "Download"), choiceValues=c("Table", "Figure", "Download"), selected="Figure", inline=TRUE)
+      radioButtons("display", "", choiceNames=c("Table", "Figure"), choiceValues=c("Table", "Figure"), selected="Figure", inline=TRUE),
+      downloadButton("downloadData", "Download")
       
     ),
     mainPanel( 
@@ -83,30 +84,20 @@ server <- function(input, output) {
     else if (input$display=="Table") {
       outputtext <- "This is when we display the table!"
     }
-    else if (input$display=="Download") {
-      outputtext <- "We will need to download in this case!"
-    }
   })
-  
-  downloadbutton <- reactive({
-    if (input$display=="Table") {
-      widget <- downloadBttn(download, label = "Download", style = "unite"
-                  )
-        
-        #downloadHandler(
-        #filename=function() {"testfile.csv"},
-        #content=function(con) {write.csv(filteredsvs(), con)})
-      widget
+
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      "svdataset.csv"
+    },
+    content = function(file) {
+      write.csv(filteredsvs(), file, row.names = FALSE)
     }
-    else {
-      widget <- NULL;
-    }
-    widget
-  })
+  )
 
   output$testtext <- renderText(descriptivetext()) 
   output$datatable <- renderDataTable(filteredsvs())
-  #output$downloaddata <- downloadbutton()
+
 }
 
 shinyApp(ui, server)
