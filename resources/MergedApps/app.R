@@ -18,6 +18,9 @@ sv <- read_delim("annotated_svs.bed", delim = "\t", col_names = TRUE) %>%
   mutate(mean_bitscore=as.integer(mean_bitscore)) %>%
   mutate(width = (end-start))
 
+annotation_options = names(sv)[8:ncol(sv)]
+annotation_options = annotation_options[-match("width",annotation_options)]
+
 min_bitscore<-min(sv$mean_bitscore)
 max_bitscore<-max(sv$mean_bitscore)
 
@@ -87,6 +90,7 @@ server <- function(input, output) {
                                         #group = rep(grouplist),
                                         # strand = "+", "-",
                                         chromosome=input$chr)
+      feature(deletion.track) <- outputvars$SV_type
       return(deletion.track)
     }
     else {
@@ -113,7 +117,7 @@ server <- function(input, output) {
         plotTracks(list(ideoTrack,axisTrack,biomTrack), from = start, to = stop, labelPos = "below")
       }
       else {
-        plotTracks(list(ideoTrack,axisTrack,biomTrack,mydeletiontrack), from = start, to = stop, labelPos = "below")
+        plotTracks(list(ideoTrack,axisTrack,biomTrack,mydeletiontrack), from = start, to = stop, labelPos = "below", Deletion="darkred", Insertion="darkgreen", TandemDup = "blue", MET = "yellow", legend=TRUE)
       }
     }
     # generate png
