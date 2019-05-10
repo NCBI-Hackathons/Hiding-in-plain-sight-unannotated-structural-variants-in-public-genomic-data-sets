@@ -24,8 +24,19 @@ Use VCFs of SNVs to call structural variants. In doing so, can we identify SVs t
 ---
 Large, aggregate, genomics data sets of short nucleotide variants (SNVs) such as [gnomAD/ExAC](https://gnomad.broadinstitute.org/) are an invaluable resource to the research and clinical genetics communities. Such data sets are often used as a control to determine the frequencies of variants in unaffected populations and gnomAD has [recently](https://www.biorxiv.org/content/10.1101/578674v1) released a structural variant call set on a subset of their samples. There is evidence, however, that additional SVs exist in the data, but haven't yet been annotated. For example, [this insertion](https://gnomad.broadinstitute.org/variant/21-18612332-A-ACCCAGGCAAACAGCGTCTGGAGTGGACCTCCAGGAAACAGGGTCTGGAGTGGACCTCCAGCAGACCTGCAGCAGAGGCACCTGTT) is actually indicative of a [known deletion](http://dgv.tcag.ca/dgv/app/variant?id=esv3646472&ref=hg19). Such anecdotal findings of deletions, processed pseudogenes, inversions, tandem duplications, and mobile element insertions exist in publicly available data, hiding there in plain sight.
 
-Without individual alignment files, the broader genomics community cannot evaluate structural variants in the complete data set. We, therefore, developed **HIPS**, a structural variant caller that uses VCF of SNVs as input and then outputs structural variant calls in bed format
+Without individual alignment files, the broader genomics community cannot evaluate structural variants in the complete data set. We, therefore, developed **HIPS**, a structural variant caller that uses VCF of SNVs as input and then outputs structural variant calls in bed format. HIPS starts from VCF, parses insertion sequences and converts to fastA, aligns by BLAST, and filters BLAST results for possible structural variants. Running the snakefile then merges similar calls and adds annotation. The Shiny app takes gnomAD data processed by HIPS and provides a web interface. 
 
+
+*Suggested Future Improvements:*
+---
+This project may be on GitHub and it may have a great name (HIPS), but we cannot deny the fact that this is the product of a 3-day hackathon and that it is imperfect. We welcome the GitHub community to make improvements and suggest the following as future improvements:
+
+* fastaToBed.py can be modified to split VCFs by position (already splits by chromosome) so that parallelization is more efficient
+* fastaToBed.py arguments could be refined (e.g., meiOnly could be boolean flag instead of string input)
+* stitch together fastaToBed.py and snakefile to have a seamless pipeline from VCF to annotated SV calls
+* Add more flexibility for file names, species, etc.
+* Option to output SV calls as VCF (currently outputs BED)
+* Add a low quality flag for SVs based on bitscore and based on overlap of breakpoints with simple repeats
 
 
 ---
