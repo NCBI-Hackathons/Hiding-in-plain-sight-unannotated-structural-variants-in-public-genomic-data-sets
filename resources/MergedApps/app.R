@@ -79,20 +79,20 @@ server <- function(input, output) {
          if (is.integer(input$scoreMinMax[2])) {
            outputvars <- outputvars[outputvars$mean_bitscore <= input$scoreMinMax[2], ]
          }
-         if (input$chr != "") {
-           outputvars <- outputvars[outputvars$chr==input$chr,]
-         }
+        # if (input$chr != "") {
+         #  outputvars <- outputvars[outputvars$chr==input$chr,]
+         #}
          #if (!is.na(str_extract(input$poslowhigh, "(\\S*:){0,1}\\d+\\-\\d+"))) {
           # outputvars <- outputvars[c(),]
            #start <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\1', input$poslowhigh)
            #end <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh)
            #outputvars <- outputvars[(!(outputvars$end < start) & !(outputvars$start > end)),]
-         if (input$start != "") {
-           outputvars <- outputvars[outputvars$start==input$start,]
-         }
-         if (input$end != "") {
-           outputvars <- outputvars[outputvars$end==input$end,]
-         }
+       #  if (input$start != "") {
+      #     outputvars <- outputvars[outputvars$start==input$start,]
+      #   }
+      #   if (input$end != "") {
+      #     outputvars <- outputvars[outputvars$end==input$end,]
+      #   }
            
            
          
@@ -109,6 +109,12 @@ server <- function(input, output) {
            outputvars <- outputvars[outputvars$simple_sequence_flag == 0,]
          }
         outputvars <- outputvars[outputvars$SV_type %in% input$typeInput, ]
+        
+        
+        outputvars=sv %>%
+          filter(chr == as.character(input$chr)) %>%
+          filter(start >= as.numeric(input$start)) %>%
+          filter(end <= as.numeric(input$end))
         
         outputvars
       
