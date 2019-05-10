@@ -28,6 +28,10 @@ def get_args():
 		help='the length of segment to expand', 
 		required = False, type = int,
 		default = 10)
+	parser.add_argument('-n','--nameflag', 
+		help='the name for the overlap flag',
+		required = False, type = str,
+		default = 'gnormad')
 	
 	args = parser.parse_args()
 	return(args)
@@ -81,9 +85,12 @@ def overlap_bed(args):
 
 	datf = intersectdat.to_dataframe(header=None)
 	overlap = get_overlap(datf,prop_thresh=args.prop)
-	datf['overlap'] = overlap
+	datf[args.nameflag] = overlap
 	#datf.columns=headerdat+headerref+['length','overlap']
-	datf.columns=headerdat+['count','overlap']
+	datf.columns=headerdat+['count',args.nameflag]
+
+	seq_columns = headerdat+[args.nameflag]
+	datf = datf.reindex(columns = seq_columns)
 	datf.to_csv(args.output,header=True,index=False,sep='\t')
 
 	return
