@@ -42,7 +42,8 @@ ui <- fluidPage (
                          selected=sv$SV_type[1]),
       checkboxGroupInput("annotations", "Annotations",
                          choices=annotation_options,
-                         selected=c())
+                         selected=c()),
+      downloadButton("downloadData", "Download")
     ),
     mainPanel(
       tabsetPanel(
@@ -144,6 +145,14 @@ server <- function(input, output) {
   }, deleteFile = TRUE)
 
   output$datatable <- renderDataTable(filtered_svs())
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      "svdataset.csv"
+    },
+    content = function(file) {
+      write.csv(filtered_svs(), file, row.names = FALSE)
+    }
+  )
 }
 
 shinyApp(ui, server)
