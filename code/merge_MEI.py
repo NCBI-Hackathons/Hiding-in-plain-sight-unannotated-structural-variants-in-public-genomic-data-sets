@@ -14,6 +14,10 @@ def get_args():
 		help='the output bed files for MEIs', 
 		required = False, type = str,
 		default = '../tests/chr1_MEIs_merged.bed')
+	parser.add_argument('-b','--basepair', 
+		help='the length of segment to expand', 
+		required = False, type = int,
+		default = 10)
 	
 	args = parser.parse_args()
 	return(args)
@@ -27,6 +31,21 @@ def changebase(line,startbase=10,endbase=10):
 	line.start = line.start-startbase
 	line.end = line.end+endbase
 	return(line)
+
+'''
+def reversechangebase(line,startbase=10,endbase=10):
+	
+	#to_dataframe won't work after it.
+	
+	line.start = line.start+startbase
+	line.end = line.end-endbase
+	return(line)
+'''
+
+def reversechangebase(datf,startbase=10,endbase=10):
+	datf['start'] = datf['start']+startbase
+	datf['end'] = datf['end']-endbase
+	return(datf)
 
 def bedtoframe(beddat,chrom):
 	ret = beddat.to_dataframe()
@@ -49,9 +68,10 @@ def merge_MEI(args):
 	chrom = dat[0][0]
 	dat = dat.each(changechr)
 	dat = dat.sort()
-	changebase_dat = dat.each(changebase)
+	changebase_dat = dat.each(changebase,startbase=args.basepair,endbase=args.basepair)
 	ret = changebase_dat.merge(c=(2,3,4,5,6), o=('mean','mean','collapse','mean','collapse'), delim='|')
 	ret = bedtoframe(ret,chrom)
+	ret = reversechangebase(ret,startbase=args.basepair,endbase=args.basepair)
 	ret.to_csv(args.output,header=True,index=False,sep='\t')
 	return()
 
