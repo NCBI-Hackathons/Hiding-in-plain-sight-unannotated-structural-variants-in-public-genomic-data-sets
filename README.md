@@ -38,9 +38,12 @@ This project may be on GitHub and it may have a great name (HIPS), but we cannot
 * Option to output SV calls as VCF (currently outputs BED)
 * Add a low quality flag for SVs based on bitscore and based on overlap of breakpoints with simple repeats
 
-
 ---
 ![flowchart](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/prelim_flowchart.png)
+
+## Results from applying to gnomAD SNV VCFs:
+![counts](https://github.com/NCBI-Hackathons/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/blob/master/resources/Num_SVs_by_chrom.jpeg)
+
 
 ---
 ## Getting Started
