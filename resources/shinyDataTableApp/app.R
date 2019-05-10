@@ -18,16 +18,19 @@ ui <- fluidPage (
                   choices=unique(sv$chr)),
       textInput(inputId="poslowhigh", label="Minimum/maximum position (e.g., 10000-20000)", value = "", width = NULL,
                 placeholder = NULL),
-      sliderInput("scoreMinMax", "Score", 30, 300, c(60, 100)),
+      sliderInput("scoreMinMax", "Score", min(sv$mean_bitscore, na.rm=T), max(sv$mean_bitscore, na.rm=T), c(50, max(sv$mean_bitscore, na.rm=T))),
       checkboxGroupInput("typeInput", "SV type",
                          choices=unique(sv$SV_type),
                          selected=sv$SV_type[1]),
-      checkboxInput("gnomad", "Gnomad SV", value=TRUE),
-      checkboxInput("thousandgenome", "ThousandGenomes SV", value=TRUE)
+      checkboxGroupInput("sv_seen", "Annotation",
+                         choices=names(sv)[8:ncol(sv)],
+                         selected=names(sv)[8:ncol(sv)]),
+      radioButtons("display", "", choiceNames=c("Table", "Figure", "Download"), choiceValues=c("Table", "Figure", "Download"), selected="Figure", inline=TRUE)
       
     ),
     mainPanel( 
-      dataTableOutput("datatable") 
+      dataTableOutput("datatable"),
+      textOutput("testtext")
     )
   )
 )
@@ -36,38 +39,76 @@ ui <- fluidPage (
 server <- function(input, output) {
   
   filteredsvs <- reactive( {
-    outputvars <- sv
-    if (is.integer(input$scoreMinMax[1])) {
-      outputvars <- outputvars[outputvars$mean_bitscore >= input$scoreMinMax[1], ]
+    if (input$display=="Table") {
+      outputvars <- sv
+      if (is.integer(input$scoreMinMax[1])) {
+        outputvars <- outputvars[outputvars$mean_bitscore >= input$scoreMinMax[1], ]
+      }
+      if (is.integer(input$scoreMinMax[2])) {
+        outputvars <- outputvars[outputvars$mean_bitscore <= input$scoreMinMax[2], ]
+      }
+      if (input$chr != "") {
+        outputvars <- outputvars[outputvars$chr==input$chr,]
+      }
+      if (!is.na(str_extract(input$poslowhigh, "(\\S*:){0,1}\\d+\\-\\d+"))) {
+        #outputvars <- outputvars[c(),]
+        start <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\1', input$poslowhigh)
+        end <- sub('(\\S*:){0,1}([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh)
+        outputvars <- outputvars[(!(outputvars$end < start) & !(outputvars$start > end)),]
+      }
+      gnomad = "gnomad_SV_counts" %in% input$sv_seen
+      if (!gnomad) {
+        outputvars <- outputvars[outputvars$gnomad_SV_counts == 0,]
+      }
+      kg = "X1kg_SV_counts" %in% input$sv_seen
+      if (!kg) {
+        outputvars <- outputvars[outputvars$X1kg_SV_counts == 0,]
+      }
+      simpleseq = "simple_sequence_flag" %in% input$sv_seen
+      if (!simpleseq) {
+        outputvars <- outputvars[outputvars$simple_sequence_flag == 0,]
+      }
+      outputvars <- outputvars[outputvars$SV_type %in% input$typeInput, ]
+      
+      outputvars
     }
-    if (is.integer(input$scoreMinMax[2])) {
-      outputvars <- outputvars[outputvars$mean_bitscore <= input$scoreMinMax[2], ]
+    else if (input$display=="Figure") {
+      outputvars <- data.frame()
     }
-    if (input$chr != "") {
-      outputvars <- outputvars[outputvars$chr==input$chr,]
-    }
-    #if (str_extract(mypos, "\\S+:{0,1}\\d+\\-\\d+") !="") {
-      #start <- sub('\\S+:([0-9]+)\\-([0-9]+)', '\\1', input$poslowhigh)
-      #end <- sub('\\S+:([0-9]+)\\-([0-9]+)', '\\2', input$poslowhigh)
-      #outputvars <- outputvars[(!(outputvars$end < start)) & (!(outputvars$start > end)),]
-    #}
-    if (input$poslowhigh != "") {
-      #m <- regexpr("(\d+)\-(\d+)", x, perl=TRUE)
-      #c(low, high) <- 
-      #outputvars <- outputvars[(!(outputvars$end < as.integer(input$poslow)) & !(outputvars$start > as.integer(input$poshigh))), ]
-    }
-    if (!input$gnomad) {
-      outputvars <- outputvars[outputvars$gnomad_SV_counts != 1,]
-    }
-    if (!input$thousandgenome) {
-      outputvars <- outputvars[outputvars$X1kg_SV_counts != 1,]
-    }
-    outputvars <- outputvars[outputvars$SV_type %in% input$typeInput, ]
     
-    outputvars
   })
   
+  descriptivetext <- reactive({
+    if (input$display=="Figure") {
+      outputtext <- "This is a lovely figure!"
+    }
+    else if (input$display=="Table") {
+      outputtext <- "This is when we display the table!"
+    }
+    else if (input$display=="Download") {
+      outputtext <- "We will need to download in this case!"
+    }
+  })
+  
+  downloadbutton <- reactive({
+    if (input$display=="Table") {
+      widget <- downloadBttn(download, label = "Download", style = "unite"
+                  )
+        
+        #downloadHandler(
+        #filename=function() {"testfile.csv"},
+        #content=function(con) {write.csv(filteredsvs(), con)})
+      widget
+    }
+    else {
+      widget <- NULL;
+    }
+    widget
+  })
+
+  output$testtext <- renderText(descriptivetext()) 
   output$datatable <- renderDataTable(filteredsvs())
+  #output$downloaddata <- downloadbutton()
 }
 
 shinyApp(ui, server)
