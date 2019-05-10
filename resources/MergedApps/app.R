@@ -11,14 +11,14 @@ library("shinyWidgets")
 library("stringr")
 # 28477797-33448354
 
-#setwd("/Users/nhansen/WomenHackathon/shinySVapp")
+setwd("/Users/rtorene9887/projects/Hiding-in-plain-sight-unannotated-structural-variants-in-public-genomic-data-sets/resources/MergedApps")
 sv <- read_delim("chr21_deletions_annotated.bed", delim = "\t", col_names = TRUE) %>%
   rename("chr" = "#chr") %>%
   mutate(mean_bitscore=as.integer(mean_bitscore)) %>%
   mutate(width = (end-start))
 
-min_bitscore<-min(sv$mean_bitscore)
-max_bitscore<-max(sv$mean_bitscore)
+min_bitscore<-min(sv$mean_bitscore, na.rm=T)
+max_bitscore<-max(sv$mean_bitscore, na.rm=T)
 
 sv$mean_bitscore <- as.integer(sv$mean_bitscore)
 sv$start <- as.integer(sv$start)
@@ -46,7 +46,7 @@ ui <- fluidPage (
       textInput(inputId="start", label="Start position (e.g., 14358791)", value = "14358791", width = NULL,
                 placeholder = NULL),
       textInput(inputId="end", label="Stop position (e.g., 14366188)", value = "14366188", width = NULL,placeholder = NULL),
-      sliderInput("scoreMinMax", "Score", min_bitscore, max_bitscore, c(60, 100)),
+      sliderInput("scoreMinMax", "Score", min_bitscore, max_bitscore, c(60, max_bitscore)),
       checkboxGroupInput("typeInput", "SV type",
                          choices=unique(sv$SV_type),
                          selected=sv$SV_type[1]),
