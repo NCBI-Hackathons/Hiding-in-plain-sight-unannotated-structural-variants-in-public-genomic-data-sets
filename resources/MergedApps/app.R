@@ -81,23 +81,6 @@ server <- function(input, output) {
     return(outputvars)
   })  
   
-  filteredsvs1 <- reactive({
-   
-    sv <- sv
-    
-    outputvars=sv %>%
-      #filter(SV_type == "Insertion") %>%
-      filter(chr == as.character(input$chr)) %>%
-      filter(SV_type%in%input$typeInput) %>%
-      filter(start >= as.numeric(input$start)) %>%
-      filter(end <= as.numeric(input$end)) %>%
-      mutate(width = (end-start)+1) 
-    #   filter(mean_bitscore >= as.numeric(input$scoreMinMax[1])) %>%
-    #  filter(mean_bitscore <= as.numeric(input$input$scoreMinMax[2]))
-    
-    
-  
-  })
   
   deletiontrack <- reactive({
     outputvars <- filtered_svs()
